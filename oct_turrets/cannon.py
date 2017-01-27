@@ -46,3 +46,4 @@ class Cannon(BaseCannon):
                 'custom_timers': trans.custom_timers
             }
             self.result_socket.send_json(data)
+        self.local_queue.put({'status': 'finished'})

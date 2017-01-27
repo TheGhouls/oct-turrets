@@ -4,6 +4,10 @@ import six
 import zmq
 import uuid
 from threading import Thread
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 from oct_turrets import utils
 
@@ -34,6 +38,7 @@ class BaseTurret(object):
     ABORTED = 'Aborted'
     INIT = 'Initialized'
     KILLED = 'Killed'
+    FINISHED = 'finished'
 
     def __init__(self, config, script_module, unique_id=None):
 
@@ -51,6 +56,8 @@ class BaseTurret(object):
         self.setup_sockets()
 
         self.init_commands()
+
+        self.local_queue = queue.Queue()
 
     def init_commands(self):
         """Initialize the commands dictionnary. This dict will be used when master send a command to interpret them
@@ -136,13 +143,14 @@ class BaseCannon(Thread):
     :param script_module: the module containing the test
     """
 
-    def __init__(self, start_time, script_module, turret_uuid, context, config):
+    def __init__(self, start_time, script_module, turret_uuid, context, config, local_queue):
         super(BaseCannon, self).__init__()
         self.start_time = start_time
         self.script_module = script_module
         self.run_loop = True
         self.config = config
         self.transaction_context = {}
+        self.local_queue = local_queue
 
         self.result_socket = context.socket(zmq.PUSH)
         self.result_socket.connect("tcp://{}:{}".format(self.config['hq_address'], self.config['hq_rc']))
