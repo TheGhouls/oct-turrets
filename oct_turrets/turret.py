@@ -81,12 +81,14 @@ class Turret(BaseTurret):
         # Setup cannons
         Cannon = get_cannon_class(self.config.get('cannon_class'))
         for i in range(self.config['cannons']):
-            cannon = Cannon(self.start_time, self.script_module, self.uuid, self.context, self.config)
+            cannon = Cannon(self.start_time, self.script_module, self.uuid, self.context, self.config,
+                            self.local_queue)
             cannon.setup()
             cannon.daemon = True
             self.cannons.append(cannon)
         try:
             cannon_index = 0
+            cannons_finished = 0
             while self.run_loop:
                 if cannon_index < len(self.cannons) and time.time() - last_insert >= rampup:
                     cannon = self.cannons[cannon_index]
@@ -94,7 +96,16 @@ class Turret(BaseTurret):
                     cannon.start()
                     last_insert = time.time()
                     cannon_index += 1
-
+                # Check communication between Turret and Cannons
+                if not self.local_queue.empty():
+                    msg = self.local_queue.get()
+                    # If all cannons has finished stop the loop
+                    if 'status' in msg and msg['status'] == 'finished':
+                        cannons_finished += 1
+                        log.info('%d/%d finished cannon(s)', cannons_finished, len(self.cannons))
+                        self.run_loop = cannons_finished == len(self.cannons)
+                        self.status = self.FINISHED
+                        self.send_status()
                 socks = dict(self.poller.poll(timeout))
                 if self.master_publisher in socks:
                     data = self.master_publisher.recv_string()
