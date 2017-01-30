@@ -80,7 +80,10 @@ def start(args):
     turret = Turret(config, module, unique_id)
 
     try:
-        turret.start()
+        if args.run:
+            turret.run()
+        else:
+            turret.start()
     except (Exception, KeyboardInterrupt):
         clean_tar_tmp(dir_name, is_tar)
         raise
@@ -94,6 +97,7 @@ def main():
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--config-file', type=str, default=None, help='path for json configuration file')
     group.add_argument('--tar', type=str, default=None, help='Path for the tarball to use')
+    parser.add_argument('--run', action='store_true', default=False, help='Run stand-alone turret')
     args = parser.parse_args()
 
     if args.config_file is None and args.tar is None:
